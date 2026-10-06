@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Leo Quick Send</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#eef1f5;--card:#fff;--ink:#0f1b2d;--mute:#6b7788;--line:#e1e6ed;--field:#f6f8fa;--brand:#0f1b2d;--accent:#0f9d62;--accent-h:#0b8453;--err:#d4382c}
+@media (prefers-color-scheme:dark){:root{--bg:#0b121c;--card:#131d2b;--ink:#e9eef5;--mute:#8d9bb0;--line:#223044;--field:#0f1824;--brand:#e9eef5;--accent:#22b374;--accent-h:#1b9a63}}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:var(--bg);color:var(--ink);font-family:"Cairo","Segoe UI",Tahoma,sans-serif;display:flex;flex-direction:column;align-items:center;padding:20px 16px}
+header{width:100%;max-width:480px;display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+.brand{font-weight:700;font-size:18px;color:var(--brand);letter-spacing:.2px}
+.brand span{color:var(--accent)}
+.seg{display:inline-flex;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:3px;gap:2px}
+.seg button{font:inherit;font-size:13px;font-weight:600;color:var(--mute);background:none;border:0;border-radius:7px;padding:6px 12px;cursor:pointer}
+.seg button.on{background:var(--brand);color:var(--card)}
+main{width:100%;max-width:480px;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:26px;box-shadow:0 12px 32px -18px rgba(15,27,45,.25)}
+h1{font-size:22px;margin:0 0 4px}
+.sub{color:var(--mute);font-size:14px;margin:0 0 22px}
+label{display:block;font-size:13px;font-weight:600;color:var(--mute);margin:18px 0 7px}
+.field{width:100%;font:inherit;color:var(--ink);background:var(--field);border:1px solid var(--line);border-radius:12px;padding:13px 14px;transition:border-color .15s}
+.field:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 18%,transparent)}
+#num{font-size:22px;font-weight:600;letter-spacing:1px;direction:ltr;text-align:left}
+#msg{direction:ltr;text-align:left;min-height:140px;line-height:1.55;resize:vertical;font-size:15px}
+.modes{display:flex;width:100%}.modes button{flex:1;padding:8px 6px}
+#send{width:100%;margin-top:22px;font:inherit;font-size:17px;font-weight:700;color:#fff;background:var(--accent);border:0;border-radius:12px;padding:15px;cursor:pointer;transition:background .15s,transform .05s}
+#send:hover{background:var(--accent-h)}#send:active{transform:scale(.99)}
+#send:focus-visible,.seg button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.foot{display:flex;justify-content:space-between;align-items:center;margin-top:14px;font-size:13px;color:var(--mute);min-height:22px}
+.err{color:var(--err)}
+.count b{color:var(--ink)}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">Leo <span>Quick Send</span></div>
+  <div class="seg" id="lang"><button data-l="en">EN</button><button data-l="ar">AR</button></div>
+</header>
+<main>
+  <h1 data-t="title"></h1>
+  <p class="sub" data-t="sub"></p>
+  <label for="num" data-t="phone"></label>
+  <input class="field" id="num" type="tel" inputmode="tel" placeholder="01012345678" autocomplete="off" autofocus>
+  <label for="msg" data-t="message"></label>
+  <textarea class="field" id="msg"></textarea>
+  <label data-t="openWith"></label>
+  <div class="seg modes" id="mode"><button data-m="app" data-t="app"></button><button data-m="web" data-t="web"></button><button data-m="api" data-t="api"></button></div>
+  <button id="send" data-t="send"></button>
+  <div class="foot"><span id="hint"></span><span class="count"><span data-t="today"></span> <b id="cnt">0</b></span></div>
+</main>
+<script>
+const T={
+ en:{title:"Send a WhatsApp message",sub:"Enter a number, press Enter, and the chat opens with your message ready.",phone:"Phone number",message:"Message",openWith:"Open with",app:"Desktop app",web:"WhatsApp Web",api:"wa.me link",send:"Send",today:"Sent today:",ready:"Ready for the next number",bad:"Enter a valid phone number",opened:"Opened chat for"},
+ ar:{title:"إرسال رسالة واتساب",sub:"اكتب الرقم واضغط Enter، فيفتح الشات والرسالة جاهزة.",phone:"رقم التليفون",message:"الرسالة",openWith:"طريقة الفتح",app:"تطبيق الكمبيوتر",web:"واتساب ويب",api:"رابط wa.me",send:"إرسال",today:"اتبعت النهاردة:",ready:"جاهز للرقم التالي",bad:"اكتب رقم صحيح",opened:"تم فتح الشات للرقم"}
+};
+const $=id=>document.getElementById(id),num=$('num'),msg=$('msg'),hint=$('hint');
+const get=(k,d)=>{try{return localStorage.getItem(k)||d}catch(e){return d}},set=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}};
+const DEF="Good evening, this is Ahmed from iGET Hospitality.\n\nI’m contacting you regarding your apartment in SODIC Eastown. May I ask if you’re currently offering it for sale or rent?";
+let lang=get('igetLang','en'),mode=get('igetMode','app');
+msg.value=get('igetMsg',DEF);
+function today(){return new Date().toISOString().slice(0,10)}
+function count(){try{const o=JSON.parse(get('igetCnt','{}'));return o.d===today()?o.n:0}catch(e){return 0}}
+function bump(){set('igetCnt',JSON.stringify({d:today(),n:count()+1}));$('cnt').textContent=count()}
+function render(){
+  document.documentElement.lang=lang;document.documentElement.dir=lang==='ar'?'rtl':'ltr';
+  document.querySelectorAll('[data-t]').forEach(e=>e.textContent=T[lang][e.dataset.t]);
+  document.querySelectorAll('#lang button').forEach(b=>b.classList.toggle('on',b.dataset.l===lang));
+  document.querySelectorAll('#mode button').forEach(b=>b.classList.toggle('on',b.dataset.m===mode));
+  hint.textContent=T[lang].ready;hint.className='';$('cnt').textContent=count();
+}
+$('lang').onclick=e=>{const l=e.target.dataset.l;if(l){lang=l;set('igetLang',l);render()}};
+$('mode').onclick=e=>{const m=e.target.dataset.m;if(m){mode=m;set('igetMode',m);render()}};
+msg.oninput=()=>set('igetMsg',msg.value);
+function normalize(r){let d=r.replace(/\D/g,'');if(d.startsWith('00'))d=d.slice(2);
+  if(d.startsWith('0')&&d.length===11)d='2'+d;else if(d.length===10&&d.startsWith('1'))d='20'+d;return d}
+function send(){
+  const d=normalize(num.value);
+  if(d.length<10){hint.textContent=T[lang].bad;hint.className='err';num.focus();return}
+  const t=encodeURIComponent(msg.value);
+  if(mode==='app')location.href='whatsapp://send?phone='+d+'&text='+t;
+  else if(mode==='web')window.open('https://web.whatsapp.com/send?phone='+d+'&text='+t,'igetWhatsAppTab');
+  else window.open('https://wa.me/'+d+'?text='+t,'_blank');
+  bump();hint.textContent=T[lang].opened+' '+d;hint.className='';num.value='';num.focus();
+}
+$('send').onclick=send;
+num.onkeydown=e=>{if(e.key==='Enter')send()};
+render();
+</script>
+</body>
+</html>
